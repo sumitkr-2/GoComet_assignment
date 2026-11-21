@@ -25,7 +25,11 @@ export const LoginPage: React.FC = () => {
       login(res);
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Invalid email or password');
+      if (!err.response) {
+        setError('Unable to reach the server. Please check your connection or verify the backend service is running.');
+      } else {
+        setError(err.response?.data?.detail || 'Invalid email or password');
+      }
     } finally {
       setLoading(false);
     }

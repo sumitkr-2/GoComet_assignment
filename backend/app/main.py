@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
@@ -10,16 +11,24 @@ from app.routes import (
     activity_router,
     dashboard_router,
 )
-import app.models # ensure all models registered
+import app.models  # ensure all models registered
+from app.seed import ensure_seeded
 
-# Initialize database schema
-Base.metadata.create_all(bind=engine)
+# Ensure database tables and demo seed data on module import
+ensure_seeded()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Ensure database tables and demo accounts on application startup
+    ensure_seeded()
+    yield
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     docs_url=f"{settings.API_V1_STR}/docs",
     redoc_url=f"{settings.API_V1_STR}/redoc",
+    lifespan=lifespan,
 )
 
 # Configure CORS
@@ -31,7 +40,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include Routers
+# Include Routers with /api prefix
 app.include_router(auth_router, prefix=settings.API_V1_STR)
 app.include_router(rfqs_router, prefix=settings.API_V1_STR)
 app.include_router(quotations_router, prefix=settings.API_V1_STR)
@@ -39,6 +48,15 @@ app.include_router(rankings_router, prefix=settings.API_V1_STR)
 app.include_router(activity_router, prefix=settings.API_V1_STR)
 app.include_router(dashboard_router, prefix=settings.API_V1_STR)
 
+# Also include Routers without /api prefix for proxies/rewrites that strip the prefix
+app.include_router(auth_router)
+app.include_router(rfqs_router)
+app.include_router(quotations_router)
+app.include_router(rankings_router)
+app.include_router(activity_router)
+app.include_router(dashboard_router)
+
+@app.get("/health", tags=["Health"])
 @app.get(f"{settings.API_V1_STR}/health", tags=["Health"])
 def health_check():
     return {
@@ -49,10 +67,4 @@ def health_check():
 
 @app.on_event("startup")
 def on_startup():
-    from app.database import SessionLocal
-    from seed import seed_demo_data
-    db = SessionLocal()
-    try:
-        seed_demo_data(db)
-    finally:
-        db.close()
+    ensure_seeded()
