@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-800 antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+/* Custom pulse for extended auctions */
+@keyframes extension-flash {
+  0%, 100% { background-color: rgba(238, 242, 255, 0.9); }
+  50% { background-color: rgba(199, 210, 254, 0.6); }
+}
+
+.animate-extension {
+  animation: extension-flash 2s infinite ease-in-out;
+}
