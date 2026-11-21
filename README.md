@@ -12,7 +12,7 @@
 [![License](https://img.shields.io/badge/Status-Production_Ready-success?style=for-the-badge)](#)
 
 <p align="center">
-  <b>A full-stack, enterprise-grade logistics procurement application designed to eradicate last-second "bid sniping" through an authoritative, mathematically enforced British Auction automatic extension engine.</b>
+  <b>A full-stack, enterprise-grade logistics procurement platform designed to eliminate last-second "bid sniping" through an authoritative, mathematically enforced British Auction automatic extension engine.</b>
 </p>
 
 ---
@@ -20,7 +20,7 @@
 [🚀 Quick Start](#-quick-start--local-setup) •
 [🔑 Demo Credentials](#-demo-accounts--1-click-login) •
 [🧠 British Auction Engine](#-the-british-auction-extension-engine) •
-[📸 UI Gallery & Placeholders](#-visual-showcase--screenshots) •
+[📸 Live UI Gallery](#-visual-showcase--screenshots) •
 [📊 Architecture & Schema](#-architecture--database-design) •
 [🧪 Automated Tests](#-automated-testing--qa-verification)
 
@@ -48,7 +48,7 @@
 
 ## 🔑 Demo Accounts & 1-Click Login
 
-The database is pre-seeded with real-world logistics entities. A **Quick Demo Switcher Bar** is pinned at the top of the app for testing.
+The database is pre-seeded with real-world logistics entities. A **Quick Demo Switcher Bar** is pinned at the top of the app for instantaneous testing.
 
 <div align="center">
 
@@ -65,7 +65,27 @@ The database is pre-seeded with real-world logistics entities. A **Quick Demo Sw
 
 ## 📸 Visual Showcase & Screenshots
 
-> *Below are designated showcase frames representing the core product interfaces.*
+<br />
+
+### 🎨 Design Benchmark & Futuristic Aether Glassmorphism
+*Engineered to reflect next-generation enterprise SaaS aesthetics (Aether Analytics, Linear, Stripe), featuring layered translucency (`backdrop-blur-xl`), subtle 3D card tilt physics, ambient neon lighting, and real-time SVG circular countdown meters.*
+
+<div align="center">
+  <table width="100%">
+    <tr>
+      <td width="50%" align="center" style="background:#080d18; border: 1px solid rgba(139,92,246,0.3); border-radius: 16px; padding: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        <img width="100%" alt="Aether Design Benchmark Reference" src="docs/screenshots/aether_design_reference.jpg" style="border-radius: 10px; border: 1px solid rgba(255,255,255,0.08);" />
+        <br /><br />
+        <sub style="color:#a855f7; font-size: 11px; font-weight: bold;">✨ Aesthetic Benchmark: Aether Glassmorphism Design Standard</sub>
+      </td>
+      <td width="50%" align="center" style="background:#080d18; border: 1px solid rgba(6,182,212,0.3); border-radius: 16px; padding: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        <img width="100%" alt="Enterprise Procurement Dashboard" src="https://github.com/user-attachments/assets/eddf1a4f-4ef8-4f07-82a1-75e33ea8bed3" style="border-radius: 10px; border: 1px solid rgba(255,255,255,0.08);" />
+        <br /><br />
+        <sub style="color:#06b6d4; font-size: 11px; font-weight: bold;">🚀 Live Implementation: British Auction RFQ Enterprise Platform</sub>
+      </td>
+    </tr>
+  </table>
+</div>
 
 <br />
 
@@ -75,14 +95,10 @@ The database is pre-seeded with real-world logistics entities. A **Quick Demo Sw
 <div align="center">
   <table width="100%">
     <tr>
-      <td align="center" style="background:#0d1527; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 16px;">
-        <!-- ======================================================== -->
-        <!-- SCREENSHOT PLACEHOLDER 1: DASHBOARD OVERVIEW             -->
-        <!-- Paste your screenshot of http://localhost:5173/dashboard -->
-        <!-- ======================================================== -->
-        <img src="https://via.placeholder.com/1200x630/080d18/06b6d4?text=Paste+Screenshot+1:+Enterprise+Dashboard+Overview+(Aether+3D+Glassmorphism)" alt="Dashboard Overview" width="100%" style="border-radius: 8px; border: 1px solid rgba(6,182,212,0.3);" />
-        <br />
-        <sub style="color:#94a3b8; font-size: 11px;"><b>Figure 1.1:</b> Real-time Procurement Analytics, 3D Hover Tilt KPI Cards, and Live Bidding History.</sub>
+      <td align="center" style="background:#080d18; border: 1px solid rgba(6,182,212,0.3); border-radius: 16px; padding: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        <img width="100%" alt="Enterprise Procurement Dashboard" src="https://github.com/user-attachments/assets/eddf1a4f-4ef8-4f07-82a1-75e33ea8bed3" style="border-radius: 10px; border: 1px solid rgba(255,255,255,0.08);" />
+        <br /><br />
+        <sub style="color:#94a3b8; font-size: 12px;"><b>Figure 1.1:</b> Real-time Procurement Analytics, 3D Tilt KPI Cards, Dual-Line Activity Area Chart, and Active RFQ Grid.</sub>
       </td>
     </tr>
   </table>
@@ -96,14 +112,15 @@ The database is pre-seeded with real-world logistics entities. A **Quick Demo Sw
 <div align="center">
   <table width="100%">
     <tr>
-      <td align="center" style="background:#0d1527; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 16px;">
-        <!-- ======================================================== -->
-        <!-- SCREENSHOT PLACEHOLDER 2: AUCTION DETAILS ROOM           -->
-        <!-- Paste your screenshot of http://localhost:5173/rfqs/1     -->
-        <!-- ======================================================== -->
-        <img src="https://via.placeholder.com/1200x630/080d18/10b981?text=Paste+Screenshot+2:+Live+Auction+Room+with+Circular+Countdown+%26+Leaderboard" alt="Auction Room" width="100%" style="border-radius: 8px; border: 1px solid rgba(16,185,129,0.3);" />
-        <br />
-        <sub style="color:#94a3b8; font-size: 11px;"><b>Figure 1.2:</b> Circular SVG Progress Gauge, Live L1 Leaderboard, and Reverse Auction Price Trajectory.</sub>
+      <td width="50%" align="center" style="background:#080d18; border: 1px solid rgba(16,185,129,0.3); border-radius: 16px; padding: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        <img width="100%" alt="Live Auction Showcase & Countdown Gauge" src="https://github.com/user-attachments/assets/6b6edbc5-ec0c-4844-b549-304cba8d4466" style="border-radius: 10px; border: 1px solid rgba(255,255,255,0.08);" />
+        <br /><br />
+        <sub style="color:#94a3b8; font-size: 11px;"><b>Figure 2.1:</b> Showcase Banner with Circular Radial Countdown Gauge & Metric Cards.</sub>
+      </td>
+      <td width="50%" align="center" style="background:#080d18; border: 1px solid rgba(16,185,129,0.3); border-radius: 16px; padding: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        <img width="100%" alt="Live Leaderboard & Reverse Bidding Price Curve" src="https://github.com/user-attachments/assets/a53b5ecb-480b-493e-a12b-bad6dbc3ee17" style="border-radius: 10px; border: 1px solid rgba(255,255,255,0.08);" />
+        <br /><br />
+        <sub style="color:#94a3b8; font-size: 11px;"><b>Figure 2.2:</b> Live Supplier Leaderboard (L1/L2/L3) & Descending Price Curve.</sub>
       </td>
     </tr>
   </table>
@@ -117,14 +134,10 @@ The database is pre-seeded with real-world logistics entities. A **Quick Demo Sw
 <div align="center">
   <table width="100%">
     <tr>
-      <td align="center" style="background:#0d1527; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 16px;">
-        <!-- ======================================================== -->
-        <!-- SCREENSHOT PLACEHOLDER 3: EXTENSION EVENT & CONFETTI     -->
-        <!-- Paste your screenshot of extension toast & banner        -->
-        <!-- ======================================================== -->
-        <img src="https://via.placeholder.com/1200x630/080d18/f59e0b?text=Paste+Screenshot+3:+British+Auction+Extension+Banner+%26+Confetti+Celebration" alt="Extension Event" width="100%" style="border-radius: 8px; border: 1px solid rgba(245,158,11,0.3);" />
-        <br />
-        <sub style="color:#94a3b8; font-size: 11px;"><b>Figure 1.3:</b> Automated Deadline Extension Notification, Reason Description, and Confetti Animation.</sub>
+      <td align="center" style="background:#080d18; border: 1px solid rgba(245,158,11,0.3); border-radius: 16px; padding: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        <img width="100%" alt="Dynamic Extension Activated & Confetti Celebration" src="https://github.com/user-attachments/assets/65cc9144-68d2-4495-a5d3-ba7e31ce7727" style="border-radius: 10px; border: 1px solid rgba(255,255,255,0.08);" />
+        <br /><br />
+        <sub style="color:#94a3b8; font-size: 12px;"><b>Figure 3.1:</b> Automated British Auction Extension Banner (+1m shift), Real-Time Toast Notification, and Confetti Animation.</sub>
       </td>
     </tr>
   </table>
@@ -138,14 +151,10 @@ The database is pre-seeded with real-world logistics entities. A **Quick Demo Sw
 <div align="center">
   <table width="100%">
     <tr>
-      <td align="center" style="background:#0d1527; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 16px;">
-        <!-- ======================================================== -->
-        <!-- SCREENSHOT PLACEHOLDER 4: SUPPLIER BID FORM              -->
-        <!-- Paste your screenshot of quotation submission console    -->
-        <!-- ======================================================== -->
-        <img src="https://via.placeholder.com/1200x630/080d18/8b5cf6?text=Paste+Screenshot+4:+Supplier+Quotation+Form+with+Quick+Underbid+Helpers" alt="Supplier Bid Form" width="100%" style="border-radius: 8px; border: 1px solid rgba(139,92,246,0.3);" />
-        <br />
-        <sub style="color:#94a3b8; font-size: 11px;"><b>Figure 1.4:</b> Itemized Charge Breakdown ($Freight + Origin + Dest$), Auto-Sum, and -₹1,000 / -₹2,500 Quick Buttons.</sub>
+      <td align="center" style="background:#080d18; border: 1px solid rgba(139,92,246,0.3); border-radius: 16px; padding: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        <img width="100%" alt="Quotation Console with Quick Underbid Helpers" src="https://github.com/user-attachments/assets/b0b07869-c1d9-450d-a28a-63e2798c936b" style="border-radius: 10px; border: 1px solid rgba(255,255,255,0.08);" />
+        <br /><br />
+        <sub style="color:#94a3b8; font-size: 12px;"><b>Figure 4.1:</b> Dynamic Charge Calculator ($Freight + Origin + Dest = Total$), Previous Best Anchor, and Quick Decrement Buttons (-₹1,000 / -₹2,500 / -₹5,000).</sub>
       </td>
     </tr>
   </table>
@@ -153,21 +162,21 @@ The database is pre-seeded with real-world logistics entities. A **Quick Demo Sw
 
 <br />
 
-### 5. Seamless Dark & Light Mode Theme Switcher
-*Dual-theme architecture ensuring visual quality in dark mode and clear contrast in light mode.*
+### 5. Seamless Dark & Light Mode Theme Architecture
+*Full-spectrum dual-theme design supporting deep space dark glassmorphism and crisp high-contrast light mode.*
 
 <div align="center">
   <table width="100%">
     <tr>
-      <td width="50%" align="center" style="background:#0d1527; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px;">
-        <!-- SCREENSHOT PLACEHOLDER 5A: DARK THEME -->
-        <img src="https://via.placeholder.com/600x380/080d18/06b6d4?text=Paste+Screenshot+5A:+Dark+Glassmorphism" alt="Dark Mode" width="100%" style="border-radius: 6px;" />
-        <br /><sub style="color:#94a3b8;"><b>Dark Mode (Default Aether)</b></sub>
+      <td width="50%" align="center" style="background:#080d18; border: 1px solid rgba(6,182,212,0.3); border-radius: 16px; padding: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        <img width="100%" alt="Dark Glassmorphism Theme" src="https://github.com/user-attachments/assets/b9b93734-f893-40e1-8142-ccc60e4f6042" style="border-radius: 10px; border: 1px solid rgba(255,255,255,0.08);" />
+        <br /><br />
+        <sub style="color:#06b6d4; font-size: 11px; font-weight: bold;">🌙 Dark Mode (Default Aether Glassmorphism)</sub>
       </td>
-      <td width="50%" align="center" style="background:#f1f5f9; border: 1px solid #cbd5e1; border-radius: 12px; padding: 12px;">
-        <!-- SCREENSHOT PLACEHOLDER 5B: LIGHT THEME -->
-        <img src="https://via.placeholder.com/600x380/ffffff/4f46e5?text=Paste+Screenshot+5B:+Light+Mode" alt="Light Mode" width="100%" style="border-radius: 6px;" />
-        <br /><sub style="color:#475569;"><b>Light Mode (Crisp Glass)</b></sub>
+      <td width="50%" align="center" style="background:#f8fafc; border: 1px solid #cbd5e1; border-radius: 16px; padding: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.08);">
+        <img width="100%" alt="Light Theme Mode" src="https://via.placeholder.com/1022x648/ffffff/4f46e5?text=Light+Theme+Mode+(Clean+Enterprise+Glass)" style="border-radius: 10px; border: 1px solid #e2e8f0;" />
+        <br /><br />
+        <sub style="color:#4f46e5; font-size: 11px; font-weight: bold;">☀️ Light Mode (Crisp Translucent Glass)</sub>
       </td>
     </tr>
   </table>
@@ -177,7 +186,7 @@ The database is pre-seeded with real-world logistics entities. A **Quick Demo Sw
 
 ## 🧠 The British Auction Extension Engine
 
-The core business logic resides in `backend/app/services/auction_engine.py`. It executes inside ACID transactions with row-level locks.
+The core business logic resides in `backend/app/services/auction_engine.py`. It executes inside ACID database transactions with row-level locks.
 
 ```
        Auction Start                              Original Close                                 Forced Close
@@ -206,12 +215,16 @@ $$\text{New Close Time} = \min\left(T_{\text{effective\_close}} + Y,\; T_{\text{
 
 | Trigger Identifier | Name | Condition for Extension | Real-World Use Case |
 | :--- | :--- | :--- | :--- |
-| **Type A** | `BID_RECEIVED` | Any valid quotation placed within the last $X$ minutes. | Maximum volume, fast-moving commodities. |
+| **Type A** | `BID_RECEIVED` | Any valid quotation placed within the last $X$ minutes. | High-frequency spot freight; maximum participation. |
 | **Type B** | `ANY_RANK_CHANGE` | Any supplier shifts rank ($L3 \to L2$, $L2 \to L1$). | Mid-market logistics; prevents rank stagnation. |
 | **Type C** | `L1_RANK_CHANGE` | Identity of lowest bidder ($L1$) changes. Self-lowering by existing $L1$ does **not** extend. | High-value capital freight; only extends when leader is dethroned. |
 
 ### The Forced Close Hard Ceiling
-An auction must never run indefinitely. Buyers establish a hard $T_{\text{forced\_close}}$. When the wall-clock reaches this timestamp, status transitions to `FORCE_CLOSED`, the bidding API rejects all submissions with HTTP 400, and final ranks are locked permanently.
+An auction must never run indefinitely. Buyers establish a hard $T_{\text{forced\_close}}$. When the wall-clock reaches this timestamp:
+1. Status transitions to `FORCE_CLOSED`.
+2. The bidding API rejects all new submissions with HTTP 400.
+3. The bidding console is automatically disabled.
+4. Final ranks are locked permanently for contract awarding.
 
 ---
 
