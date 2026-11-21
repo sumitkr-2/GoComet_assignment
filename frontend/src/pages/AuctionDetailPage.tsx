@@ -4,8 +4,11 @@ import { rfqAPI, biddingAPI, rankingAPI, activityAPI } from '../services/api';
 import { RFQ, Quotation, RFQRankings, ActivityLog } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { StatusBadge } from '../components/StatusBadge';
-import { CountdownTimer } from '../components/CountdownTimer';
+import { CircularCountdown } from '../components/CircularCountdown';
 import { StatCard } from '../components/StatCard';
+import { BidHistoryChart } from '../components/BidHistoryChart';
+import { ExtensionToast, fireConfetti } from '../components/ExtensionToast';
+import { TiltCard3D } from '../components/TiltCard3D';
 import {
   Gavel,
   Clock,
@@ -21,8 +24,12 @@ import {
   Layers,
   History,
   Truck,
-  DollarSign
+  Award,
+  ChevronDown,
+  ChevronUp,
+  Zap,
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export const AuctionDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -47,6 +54,17 @@ export const AuctionDetailPage: React.FC = () => {
   const [bidError, setBidError] = useState<string | null>(null);
   const [bidSuccess, setBidSuccess] = useState<string | null>(null);
 
+  // Expanded row tracking
+  const [expandedRows, setExpandedRows] = useState<Record<number, boolean>>({});
+
+  // Toast state
+  const [toast, setToast] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    type: 'extension' | 'l1_change';
+  }>({ show: false, title: '', message: '', type: 'extension' });
+
   // Auto-calculated total quotation
   const totalQuotation =
     (Number(freightCharges) || 0) +
@@ -55,9 +73,12 @@ export const AuctionDetailPage: React.FC = () => {
 
   // Find user's existing best quotation
   const myExistingQuotes = bids.filter((b) => b.supplier_id === user?.supplier_id);
-  const myBestQuote = myExistingQuotes.length > 0
-    ? Math.min(...myExistingQuotes.map((q) => q.total_amount))
-    : null;
+  const myBestQuote =
+    myExistingQuotes.length > 0
+      ? Math.min(...myExistingQuotes.map((q) => q.total_amount))
+      : null;
+
+  const currentL1Bid = rankings?.current_lowest_bid || null;
 
   const fetchAllData = async () => {
     if (!rfqId) return;
@@ -68,6 +89,32 @@ export const AuctionDetailPage: React.FC = () => {
         biddingAPI.getBids(rfqId),
         activityAPI.getLogs(rfqId),
       ]);
+
+      // Check if closing time changed (extension occurred)
+      if (rfq && rfqData.current_close_time !== rfq.current_close_time) {
+        setToast({
+          show: true,
+          title: 'Auction Deadline Extended! ⚡',
+          message: `Closing time extended to ${new Date(rfqData.current_close_time).toLocaleTimeString()} due to qualifying activity in trigger window.`,
+          type: 'extension',
+        });
+      }
+
+      // Check if L1 changed
+      if (
+        rankings &&
+        rankData.l1_supplier_id &&
+        rankings.l1_supplier_id &&
+        rankData.l1_supplier_id !== rankings.l1_supplier_id
+      ) {
+        setToast({
+          show: true,
+          title: 'New L1 Leaderboard Champion! 🏆',
+          message: `${rankData.l1_company_name} is now L1 with bid of ₹${rankData.current_lowest_bid?.toLocaleString('en-IN')}`,
+          type: 'l1_change',
+        });
+      }
+
       setRfq(rfqData);
       setRankings(rankData);
       setBids(bidsData);
@@ -85,6 +132,28 @@ export const AuctionDetailPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [rfqId]);
 
+  // Quick underbid helper
+  const handleQuickDecrement = (reduction: number) => {
+    const target = myBestQuote ? myBestQuote - reduction : (currentL1Bid ? currentL1Bid - reduction : 40000);
+    const safeTarget = Math.max(1000, target);
+
+    // Split target into realistic charges (75% freight, 15% origin, 10% dest)
+    const freight = Math.round((safeTarget * 0.75) / 100) * 100;
+    const origin = Math.round((safeTarget * 0.15) / 100) * 100;
+    const dest = Math.max(100, safeTarget - freight - origin);
+
+    setFreightCharges(freight);
+    setOriginCharges(origin);
+    setDestinationCharges(dest);
+    if (!carrierName && user?.company_name) {
+      setCarrierName(`${user.company_name} Prime`);
+    }
+  };
+
+  const toggleRowExpand = (suppId: number) => {
+    setExpandedRows((prev) => ({ ...prev, [suppId]: !prev[suppId] }));
+  };
+
   const handleBidSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBidError(null);
@@ -96,14 +165,16 @@ export const AuctionDetailPage: React.FC = () => {
     }
 
     if (myBestQuote !== null && totalQuotation >= myBestQuote) {
-      setBidError(`Reverse auction rule: Your new bid (₹${totalQuotation.toLocaleString()}) must be lower than your current best bid (₹${myBestQuote.toLocaleString()}).`);
+      setBidError(
+        `Reverse auction rule: Your new bid (₹${totalQuotation.toLocaleString()}) must be lower than your current best bid (₹${myBestQuote.toLocaleString()}).`
+      );
       return;
     }
 
     setBidSubmitting(true);
     try {
       const res = await biddingAPI.submitBid(rfqId, {
-        carrier_name: carrierName,
+        carrier_name: carrierName || `${user?.company_name || 'Carrier'} Express`,
         freight_charges: Number(freightCharges),
         origin_charges: Number(originCharges),
         destination_charges: Number(destinationCharges),
@@ -111,12 +182,21 @@ export const AuctionDetailPage: React.FC = () => {
         quote_validity: quoteValidity,
       });
 
+      if (res.is_l1) {
+        fireConfetti();
+      }
+
       let msg = `Quotation submitted! You are currently ranked ${res.rank}.`;
       if (res.auction_extended) {
         msg += ` ⚡ British Auction Extended to ${new Date(res.new_close_time).toLocaleTimeString()}!`;
+        setToast({
+          show: true,
+          title: 'British Auction Extended! ⚡',
+          message: res.extension_reason || `Closing time extended by trigger condition.`,
+          type: 'extension',
+        });
       }
       setBidSuccess(msg);
-      // Reset monetary charges for next lower bid
       setFreightCharges('');
       setOriginCharges('');
       setDestinationCharges('');
@@ -130,10 +210,12 @@ export const AuctionDetailPage: React.FC = () => {
 
   if (loading && !rfq) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center min-h-[450px]">
         <div className="text-center">
-          <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-xs text-slate-500 font-medium">Entering live auction bidding room...</p>
+          <div className="w-12 h-12 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">
+            Entering live 3D auction bidding room...
+          </p>
         </div>
       </div>
     );
@@ -141,9 +223,9 @@ export const AuctionDetailPage: React.FC = () => {
 
   if (!rfq) {
     return (
-      <div className="p-8 text-center text-slate-600">
+      <div className="p-8 text-center text-slate-400">
         <p>Auction not found.</p>
-        <Link to="/auctions" className="text-indigo-600 font-bold text-xs mt-2 inline-block">
+        <Link to="/auctions" className="text-cyan-400 font-bold text-xs mt-2 inline-block">
           &larr; Back to Auctions
         </Link>
       </div>
@@ -153,87 +235,133 @@ export const AuctionDetailPage: React.FC = () => {
   const isBiddingActive = rfq.status === 'ACTIVE';
 
   return (
-    <div className="space-y-6">
-      {/* Top Breadcrumb & Action */}
+    <div className="space-y-6 relative z-10">
+      <ExtensionToast
+        show={toast.show}
+        onClose={() => setToast((prev) => ({ ...prev, show: false }))}
+        title={toast.title}
+        message={toast.message}
+        type={toast.type}
+      />
+
+      {/* Top Breadcrumb & Live Heartbeat */}
       <div className="flex items-center justify-between">
         <Link
           to="/auctions"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors"
+          className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-cyan-400 transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           Back to Auctions
         </Link>
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-          <span className="text-xs text-slate-500 font-mono">Live Bidding Sync Active</span>
+        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/40 dark:bg-dark-850/60 border border-slate-200 dark:border-white/10 text-xs">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span className="text-[11px] font-mono text-slate-400">Live Bidding Sync Active</span>
         </div>
       </div>
 
-      {/* Main Auction Header Card */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span className="font-mono text-xs font-bold px-2.5 py-1 rounded bg-slate-100 text-indigo-700 border border-slate-200">
-                {rfq.reference_id}
-              </span>
-              <StatusBadge status={rfq.status} isExtended={rfq.is_extended} />
-              {rfq.auction_config?.british_auction_enabled && (
-                <span className="px-2.5 py-1 rounded text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1">
-                  <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-                  British Auction: {rfq.auction_config.extension_trigger_type.replace(/_/g, ' ')}
+      {/* Main Auction Showcase Banner */}
+      <TiltCard3D glowColor="cyan" intensity={4}>
+        <div className="relative rounded-2xl p-6 sm:p-8 glass-panel dark:bg-dark-900/80 border border-slate-200/80 dark:border-white/10 shadow-glass overflow-hidden">
+          {/* Subtle neon glow orbs */}
+          <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <span className="font-mono text-xs font-bold px-3 py-1 rounded-lg bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 shadow-sm">
+                  {rfq.reference_id}
                 </span>
-              )}
+                <StatusBadge status={rfq.status} isExtended={rfq.is_extended} />
+                {rfq.auction_config?.british_auction_enabled && (
+                  <span className="px-3 py-1 rounded-lg text-xs font-bold bg-violet-500/15 text-violet-600 dark:text-violet-300 border border-violet-500/30 flex items-center gap-1.5 shadow-sm">
+                    <Sparkles className="w-3.5 h-3.5 text-violet-400" />
+                    British Auction: {rfq.auction_config.extension_trigger_type.replace(/_/g, ' ')}
+                  </span>
+                )}
+              </div>
+
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                {rfq.name}
+              </h1>
+
+              <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-cyan-400" />
+                  Pickup Date:{' '}
+                  <strong className="text-slate-800 dark:text-slate-200">
+                    {new Date(rfq.pickup_service_date).toLocaleDateString()}
+                  </strong>
+                </span>
+                <span>•</span>
+                <span>
+                  Buyer:{' '}
+                  <strong className="text-slate-800 dark:text-slate-200">
+                    {rfq.buyer_name || 'Procurement Team'}
+                  </strong>
+                </span>
+                <span>•</span>
+                <span>
+                  Total Quotations:{' '}
+                  <strong className="text-slate-800 dark:text-slate-200">
+                    {bids.length}
+                  </strong>
+                </span>
+              </div>
             </div>
 
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-              {rfq.name}
-            </h1>
-
-            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
-              <span className="flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                Pickup Date: <strong className="text-slate-700">{new Date(rfq.pickup_service_date).toLocaleDateString()}</strong>
-              </span>
-              <span>•</span>
-              <span>Buyer: <strong className="text-slate-700">{rfq.buyer_name || 'Procurement Team'}</strong></span>
-              <span>•</span>
-              <span>Total Quotations: <strong className="text-slate-700">{bids.length}</strong></span>
+            {/* Circular Countdown Gauge */}
+            <div className="min-w-[320px]">
+              <CircularCountdown
+                startTime={rfq.bid_start_time}
+                closeTime={rfq.current_close_time}
+                forcedCloseTime={rfq.forced_close_time}
+                status={rfq.status}
+                isExtended={rfq.is_extended}
+                triggerWindowMinutes={rfq.auction_config?.trigger_window_minutes}
+                onExpire={fetchAllData}
+                size="md"
+              />
             </div>
           </div>
 
-          {/* Countdown Timer Block */}
-          <div className="min-w-[280px]">
-            <CountdownTimer
-              closeTime={rfq.current_close_time}
-              forcedCloseTime={rfq.forced_close_time}
-              status={rfq.status}
-              triggerWindowMinutes={rfq.auction_config?.trigger_window_minutes}
-              onExpire={fetchAllData}
-            />
-          </div>
+          {/* Extension Notice Alert */}
+          {rfq.is_extended && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-6 p-4 rounded-xl bg-violet-500/10 border border-violet-500/30 text-violet-800 dark:text-violet-200 text-xs flex items-start gap-3 shadow-sm"
+            >
+              <Sparkles className="w-5 h-5 text-violet-400 shrink-0 mt-0.5 animate-spin" />
+              <div>
+                <p className="font-bold text-sm">
+                  British Auction Automatic Extension Activated!
+                </p>
+                <p className="text-violet-700 dark:text-violet-300 text-xs mt-1 leading-relaxed">
+                  Qualifying bidding activity occurred within the configured trigger window. 
+                  Closing deadline dynamically pushed from{' '}
+                  <span className="line-through opacity-70">
+                    {new Date(rfq.original_close_time).toLocaleTimeString()}
+                  </span>{' '}
+                  to{' '}
+                  <strong className="text-cyan-400 font-mono">
+                    {new Date(rfq.current_close_time).toLocaleTimeString()}
+                  </strong>
+                  . Hard forced ceiling:{' '}
+                  <strong className="text-rose-400 font-mono">
+                    {new Date(rfq.forced_close_time).toLocaleTimeString()}
+                  </strong>
+                  .
+                </p>
+              </div>
+            </motion.div>
+          )}
         </div>
+      </TiltCard3D>
 
-        {/* Extension Alert Banner */}
-        {rfq.is_extended && (
-          <div className="mt-5 p-3.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-900 text-xs flex items-start gap-2.5 shadow-sm">
-            <Sparkles className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5 animate-bounce" />
-            <div>
-              <p className="font-bold">
-                British Auction Automatic Extension Triggered!
-              </p>
-              <p className="text-indigo-700 text-[11px] mt-0.5 leading-relaxed">
-                Qualifying bidding activity occurred within the configured trigger window. 
-                Closing time has been automatically extended from <span className="line-through">{new Date(rfq.original_close_time).toLocaleTimeString()}</span> to{' '}
-                <strong>{new Date(rfq.current_close_time).toLocaleTimeString()}</strong>.
-                Hard forced closing ceiling: <strong>{new Date(rfq.forced_close_time).toLocaleTimeString()}</strong>.
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 4 Metric Stats */}
+      {/* 4 Top Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Current Lowest Bid (L1)"
@@ -242,7 +370,11 @@ export const AuctionDetailPage: React.FC = () => {
               ? `₹${rankings.current_lowest_bid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
               : 'No Bids Yet'
           }
-          subtitle={rankings?.l1_company_name ? `Held by ${rankings.l1_company_name}` : 'Awaiting first quotation'}
+          subtitle={
+            rankings?.l1_company_name
+              ? `Held by ${rankings.l1_company_name}`
+              : 'Awaiting first quotation'
+          }
           icon={TrendingDown}
           color="emerald"
         />
@@ -251,192 +383,179 @@ export const AuctionDetailPage: React.FC = () => {
           value={rankings?.total_suppliers || 0}
           subtitle="Active competing carriers"
           icon={Truck}
-          color="indigo"
+          color="cyan"
         />
         <StatCard
           title="Current Close Time"
           value={new Date(rfq.current_close_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           subtitle={`Originally ${new Date(rfq.original_close_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
           icon={Clock}
-          color="amber"
+          color="violet"
         />
         <StatCard
           title="Forced Close Limit"
           value={new Date(rfq.forced_close_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-          subtitle="Hard ceiling deadline"
+          subtitle="Hard ceiling limit"
           icon={ShieldAlert}
           color="rose"
         />
       </div>
 
-      {/* Main Grid: Leaderboard & Bid Form */}
+      {/* Main Grid: Leaderboard & Quotation Submissions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Leaderboard / Rankings & Quotation History */}
+        {/* Left 2 Columns: Leaderboard & Live Bid History Chart */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Supplier Rankings Leaderboard */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+          {/* Supplier Leaderboard */}
+          <div className="rounded-2xl glass-panel dark:bg-dark-900/70 border border-slate-200/80 dark:border-white/10 shadow-glass overflow-hidden">
+            <div className="p-5 border-b border-slate-200/80 dark:border-white/10 flex items-center justify-between">
               <div>
-                <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                  <Gavel className="w-4 h-4 text-indigo-600" />
+                <h2 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                  <Award className="w-4 h-4 text-emerald-400" />
                   Live Supplier Leaderboard (Rankings)
                 </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   Lowest total quotation holds L1 position (Reverse Auction)
                 </p>
               </div>
-              <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">
+              <span className="text-[11px] font-black text-cyan-600 dark:text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-3 py-1 rounded-full font-mono">
                 {rankings?.rankings.length || 0} Active Quotes
               </span>
             </div>
 
             <div className="overflow-x-auto">
               {rankings?.rankings.length === 0 ? (
-                <div className="p-8 text-center text-slate-400 text-xs">
-                  No quotations submitted yet. Be the first supplier to bid!
+                <div className="p-10 text-center text-slate-400 text-xs">
+                  No quotations submitted yet. Competing carriers will appear here as bids arrive.
                 </div>
               ) : (
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-slate-50/75 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                      <th className="py-3 px-4">Rank</th>
-                      <th className="py-3 px-4">Supplier / Carrier</th>
-                      <th className="py-3 px-4">Charges Breakdown</th>
-                      <th className="py-3 px-4">Total Bid</th>
-                      <th className="py-3 px-4">Terms</th>
-                      <th className="py-3 px-4">Submitted</th>
+                    <tr className="bg-slate-100/40 dark:bg-dark-850/60 border-b border-slate-200/60 dark:border-white/5 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">
+                      <th className="py-3.5 px-4">Rank</th>
+                      <th className="py-3.5 px-4">Supplier / Carrier</th>
+                      <th className="py-3.5 px-4">Charges Breakdown</th>
+                      <th className="py-3.5 px-4">Total Bid</th>
+                      <th className="py-3.5 px-4">Details</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 text-xs">
-                    {rankings?.rankings.map((item) => (
-                      <tr
-                        key={item.supplier_id}
-                        className={`transition-colors ${
-                          item.rank === 'L1'
-                            ? 'bg-emerald-50/50 hover:bg-emerald-50 font-medium'
-                            : item.is_current_user
-                            ? 'bg-indigo-50/40 hover:bg-indigo-50/70'
-                            : 'hover:bg-slate-50/80'
-                        }`}
-                      >
-                        <td className="py-3.5 px-4 font-mono">
-                          <span
-                            className={`inline-flex items-center justify-center w-7 h-7 rounded-lg font-bold text-xs ${
+                  <tbody className="divide-y divide-slate-100 dark:divide-white/5 text-xs">
+                    {rankings?.rankings.map((item) => {
+                      const isExpanded = !!expandedRows[item.supplier_id];
+                      return (
+                        <React.Fragment key={item.supplier_id}>
+                          <tr
+                            onClick={() => toggleRowExpand(item.supplier_id)}
+                            className={`transition-colors cursor-pointer ${
                               item.rank === 'L1'
-                                ? 'bg-emerald-600 text-white shadow-sm'
-                                : item.rank === 'L2'
-                                ? 'bg-blue-100 text-blue-800'
-                                : 'bg-slate-100 text-slate-700'
+                                ? 'bg-emerald-500/10 dark:bg-emerald-500/10 hover:bg-emerald-500/15'
+                                : item.is_current_user
+                                ? 'bg-cyan-500/10 dark:bg-cyan-500/10 hover:bg-cyan-500/15'
+                                : 'hover:bg-slate-50/50 dark:hover:bg-white/5'
                             }`}
                           >
-                            {item.rank}
-                          </span>
-                        </td>
-
-                        <td className="py-3.5 px-4">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-bold text-slate-800">
-                              {item.company_name}
-                            </span>
-                            {item.is_current_user && (
-                              <span className="px-1.5 py-0.2 bg-indigo-600 text-white font-bold rounded text-[9px]">
-                                YOU
+                            <td className="py-4 px-4 font-mono">
+                              <span
+                                className={`inline-flex items-center justify-center w-8 h-8 rounded-xl font-black text-xs shadow-sm ${
+                                  item.rank === 'L1'
+                                    ? 'bg-gradient-to-tr from-emerald-500 to-cyan-500 text-white shadow-glow-emerald ring-2 ring-emerald-400/50'
+                                    : item.rank === 'L2'
+                                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                                    : 'bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-300'
+                                }`}
+                              >
+                                {item.rank}
                               </span>
+                            </td>
+
+                            <td className="py-4 px-4">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-slate-900 dark:text-white text-sm">
+                                  {item.company_name}
+                                </span>
+                                {item.is_current_user && (
+                                  <span className="px-2 py-0.5 bg-cyan-500 text-black font-black rounded-md text-[9px] uppercase tracking-wider shadow-sm">
+                                    YOU
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5">
+                                <Truck className="w-3 h-3 text-cyan-400" />
+                                {item.carrier_name}
+                              </span>
+                            </td>
+
+                            <td className="py-4 px-4 font-mono text-[11px] text-slate-600 dark:text-slate-300">
+                              <div>Freight: ₹{item.freight_charges.toLocaleString()}</div>
+                              <div className="text-[10px] text-slate-400">
+                                Origin: ₹{item.origin_charges.toLocaleString()} • Dest: ₹{item.destination_charges.toLocaleString()}
+                              </div>
+                            </td>
+
+                            <td className="py-4 px-4 font-mono">
+                              <span
+                                className={`font-black text-base ${
+                                  item.rank === 'L1'
+                                    ? 'text-emerald-500 dark:text-emerald-400'
+                                    : 'text-slate-800 dark:text-white'
+                                }`}
+                              >
+                                ₹{item.total_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                              </span>
+                            </td>
+
+                            <td className="py-4 px-4 text-right">
+                              <button className="p-1 rounded-lg hover:bg-slate-200 dark:hover:bg-white/10 text-slate-400 transition-colors">
+                                {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                              </button>
+                            </td>
+                          </tr>
+
+                          {/* Expandable details row */}
+                          <AnimatePresence>
+                            {isExpanded && (
+                              <tr className="bg-slate-50/70 dark:bg-dark-850/50">
+                                <td colSpan={5} className="p-4">
+                                  <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs"
+                                  >
+                                    <div className="p-2.5 rounded-lg bg-slate-100 dark:bg-dark-800 border border-slate-200 dark:border-white/5">
+                                      <span className="text-slate-400 text-[10px] uppercase font-bold block">Transit SLA</span>
+                                      <span className="font-bold text-slate-800 dark:text-slate-200">{item.transit_time}</span>
+                                    </div>
+                                    <div className="p-2.5 rounded-lg bg-slate-100 dark:bg-dark-800 border border-slate-200 dark:border-white/5">
+                                      <span className="text-slate-400 text-[10px] uppercase font-bold block">Quote Validity</span>
+                                      <span className="font-bold text-slate-800 dark:text-slate-200">{item.quote_validity}</span>
+                                    </div>
+                                    <div className="p-2.5 rounded-lg bg-slate-100 dark:bg-dark-800 border border-slate-200 dark:border-white/5">
+                                      <span className="text-slate-400 text-[10px] uppercase font-bold block">Submitted At</span>
+                                      <span className="font-mono text-slate-800 dark:text-slate-200">
+                                        {new Date(item.submitted_at).toLocaleTimeString()}
+                                      </span>
+                                    </div>
+                                    <div className="p-2.5 rounded-lg bg-slate-100 dark:bg-dark-800 border border-slate-200 dark:border-white/5">
+                                      <span className="text-slate-400 text-[10px] uppercase font-bold block">Tie-Break Priority</span>
+                                      <span className="font-mono text-emerald-500 font-bold">Deterministic</span>
+                                    </div>
+                                  </motion.div>
+                                </td>
+                              </tr>
                             )}
-                          </div>
-                          <span className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
-                            <Truck className="w-3 h-3 text-slate-400" />
-                            {item.carrier_name}
-                          </span>
-                        </td>
-
-                        <td className="py-3.5 px-4 font-mono text-[11px] text-slate-600">
-                          <div>Freight: ₹{item.freight_charges.toLocaleString()}</div>
-                          <div className="text-[10px] text-slate-400">
-                            Origin: ₹{item.origin_charges.toLocaleString()} • Dest: ₹{item.destination_charges.toLocaleString()}
-                          </div>
-                        </td>
-
-                        <td className="py-3.5 px-4 font-mono">
-                          <span
-                            className={`font-bold text-sm ${
-                              item.rank === 'L1' ? 'text-emerald-700' : 'text-slate-800'
-                            }`}
-                          >
-                            ₹{item.total_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                          </span>
-                        </td>
-
-                        <td className="py-3.5 px-4 text-[11px] text-slate-600">
-                          <div>Transit: {item.transit_time}</div>
-                          <div className="text-[10px] text-slate-400">Valid: {item.quote_validity}</div>
-                        </td>
-
-                        <td className="py-3.5 px-4 text-[10px] text-slate-400 font-mono">
-                          {new Date(item.submitted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                        </td>
-                      </tr>
-                    ))}
+                          </AnimatePresence>
+                        </React.Fragment>
+                      );
+                    })}
                   </tbody>
                 </table>
               )}
             </div>
           </div>
 
-          {/* Complete Chronological Quotation Audit History */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="p-4 border-b border-slate-200">
-              <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                <History className="w-4 h-4 text-slate-500" />
-                Quotation Submission History ({bids.length} total bids)
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Every quotation and price reduction preserved for transparency
-              </p>
-            </div>
-
-            <div className="overflow-x-auto max-h-[320px]">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50/75 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                    <th className="py-2.5 px-4">Supplier</th>
-                    <th className="py-2.5 px-4">Carrier</th>
-                    <th className="py-2.5 px-4">Total Quote</th>
-                    <th className="py-2.5 px-4">Status</th>
-                    <th className="py-2.5 px-4">Timestamp</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-xs">
-                  {bids.map((b) => (
-                    <tr key={b.id} className="hover:bg-slate-50/60 font-mono">
-                      <td className="py-2 px-4 font-sans font-medium text-slate-800">
-                        {b.supplier_company_name}
-                      </td>
-                      <td className="py-2 px-4 font-sans text-slate-600">
-                        {b.carrier_name}
-                      </td>
-                      <td className="py-2 px-4 font-bold text-slate-900">
-                        ₹{b.total_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                      </td>
-                      <td className="py-2 px-4 font-sans">
-                        {b.is_latest ? (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                            Current Bid {b.rank ? `(${b.rank})` : ''}
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-slate-400">
-                            Superseded
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-2 px-4 text-[10px] text-slate-500">
-                        {new Date(b.submitted_at).toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          {/* Live Price Trend Chart */}
+          <div className="rounded-2xl glass-panel dark:bg-dark-900/70 border border-slate-200/80 dark:border-white/10 p-5 shadow-glass">
+            <BidHistoryChart bids={bids} />
           </div>
         </div>
 
@@ -444,52 +563,97 @@ export const AuctionDetailPage: React.FC = () => {
         <div className="space-y-6">
           {/* Supplier Quotation Submission Form */}
           {isSupplier ? (
-            <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4">
-              <div className="border-b border-slate-100 pb-2.5">
-                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                  <TrendingDown className="w-4 h-4 text-indigo-600" />
-                  Submit / Lower Quotation
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Reverse Bidding: Each new bid must beat your previous quotation
-                </p>
+            <div className="rounded-2xl glass-panel dark:bg-dark-900/80 border border-slate-200/80 dark:border-white/10 p-5 shadow-glass space-y-4">
+              <div className="border-b border-slate-200/60 dark:border-white/10 pb-3 flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <TrendingDown className="w-4 h-4 text-cyan-400" />
+                    Submit / Lower Quotation
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Reverse Bidding: Each bid must be lower than your previous quote
+                  </p>
+                </div>
               </div>
 
               {myBestQuote !== null && (
-                <div className="p-3 rounded-lg bg-indigo-50 border border-indigo-100 text-xs text-indigo-900 flex items-center justify-between">
-                  <span>Your Current Best Bid:</span>
-                  <strong className="font-mono text-sm text-indigo-700">
+                <div className="p-3.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-xs text-cyan-800 dark:text-cyan-300 flex items-center justify-between shadow-sm">
+                  <span className="font-bold">Your Current Best Bid:</span>
+                  <strong className="font-mono text-base text-cyan-600 dark:text-cyan-400 font-black">
                     ₹{myBestQuote.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </strong>
                 </div>
               )}
 
-              {bidError && (
-                <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs">
-                  {bidError}
+              {/* Quick Decrement Buttons */}
+              {isBiddingActive && (
+                <div>
+                  <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-1.5 flex items-center gap-1">
+                    <Zap className="w-3 h-3 text-amber-400" />
+                    Quick Underbid Helpers
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleQuickDecrement(1000)}
+                      className="px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-dark-850 border border-slate-200 dark:border-white/10 hover:border-cyan-500/50 text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300 transition-colors"
+                    >
+                      -₹1,000
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickDecrement(2500)}
+                      className="px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-dark-850 border border-slate-200 dark:border-white/10 hover:border-cyan-500/50 text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300 transition-colors"
+                    >
+                      -₹2,500
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickDecrement(5000)}
+                      className="px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-dark-850 border border-slate-200 dark:border-white/10 hover:border-cyan-500/50 text-[11px] font-mono font-bold text-slate-700 dark:text-slate-300 transition-colors"
+                    >
+                      -₹5,000
+                    </button>
+                  </div>
                 </div>
+              )}
+
+              {bidError && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs"
+                >
+                  {bidError}
+                </motion.div>
               )}
 
               {bidSuccess && (
-                <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-semibold"
+                >
                   {bidSuccess}
-                </div>
+                </motion.div>
               )}
 
               {!isBiddingActive ? (
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center text-slate-500 text-xs space-y-1">
-                  <ShieldAlert className="w-6 h-6 mx-auto text-slate-400" />
-                  <p className="font-bold text-slate-700">Bidding Interface Disabled</p>
+                <div className="p-6 rounded-2xl bg-slate-100/50 dark:bg-dark-850/50 border border-slate-200 dark:border-white/5 text-center text-slate-500 dark:text-slate-400 text-xs space-y-1">
+                  <ShieldAlert className="w-8 h-8 mx-auto text-slate-400" />
+                  <p className="font-bold text-slate-700 dark:text-slate-300">
+                    Bidding Interface Disabled
+                  </p>
                   <p>
                     {rfq.status === 'UPCOMING'
                       ? 'Auction has not opened yet.'
-                      : 'Auction has ended. No further quotations accepted.'}
+                      : 'Auction has concluded. No further quotations accepted.'}
                   </p>
                 </div>
               ) : (
-                <form onSubmit={handleBidSubmit} className="space-y-3">
+                <form onSubmit={handleBidSubmit} className="space-y-3.5">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                       Carrier Name *
                     </label>
                     <input
@@ -497,14 +661,14 @@ export const AuctionDetailPage: React.FC = () => {
                       required
                       value={carrierName}
                       onChange={(e) => setCarrierName(e.target.value)}
-                      placeholder="e.g. BlueDart Cargo Express"
-                      className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="e.g. BlueDart Prime Cargo"
+                      className="w-full text-xs px-3 py-2 bg-slate-50 dark:bg-dark-850 border border-slate-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 text-slate-800 dark:text-white"
                     />
                   </div>
 
                   <div className="grid grid-cols-3 gap-2">
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                      <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                         Freight (₹) *
                       </label>
                       <input
@@ -515,11 +679,11 @@ export const AuctionDetailPage: React.FC = () => {
                         value={freightCharges}
                         onChange={(e) => setFreightCharges(e.target.value ? parseFloat(e.target.value) : '')}
                         placeholder="25000"
-                        className="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                        className="w-full text-xs px-2.5 py-1.5 bg-slate-50 dark:bg-dark-850 border border-slate-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 font-mono text-slate-800 dark:text-white"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                      <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                         Origin (₹) *
                       </label>
                       <input
@@ -530,11 +694,11 @@ export const AuctionDetailPage: React.FC = () => {
                         value={originCharges}
                         onChange={(e) => setOriginCharges(e.target.value ? parseFloat(e.target.value) : '')}
                         placeholder="3000"
-                        className="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                        className="w-full text-xs px-2.5 py-1.5 bg-slate-50 dark:bg-dark-850 border border-slate-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 font-mono text-slate-800 dark:text-white"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                      <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                         Dest (₹) *
                       </label>
                       <input
@@ -545,42 +709,42 @@ export const AuctionDetailPage: React.FC = () => {
                         value={destinationCharges}
                         onChange={(e) => setDestinationCharges(e.target.value ? parseFloat(e.target.value) : '')}
                         placeholder="2000"
-                        className="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                        className="w-full text-xs px-2.5 py-1.5 bg-slate-50 dark:bg-dark-850 border border-slate-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 font-mono text-slate-800 dark:text-white"
                       />
                     </div>
                   </div>
 
-                  {/* Auto Calculated Total */}
-                  <div className="p-3 rounded-lg bg-slate-900 text-white flex items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-300">
+                  {/* Auto-Calculated Total */}
+                  <div className="p-3.5 rounded-xl bg-slate-900/90 dark:bg-dark-950 border border-cyan-500/30 text-white flex items-center justify-between shadow-glow-cyan">
+                    <span className="text-xs font-bold text-slate-400">
                       Total Quotation =
                     </span>
-                    <span className="font-mono font-black text-base text-emerald-400">
+                    <span className="font-mono font-black text-lg text-cyan-400">
                       ₹{totalQuotation.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                        Transit Time
+                      <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                        Transit SLA
                       </label>
                       <input
                         type="text"
                         value={transitTime}
                         onChange={(e) => setTransitTime(e.target.value)}
-                        className="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full text-xs px-2.5 py-1.5 bg-slate-50 dark:bg-dark-850 border border-slate-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 text-slate-800 dark:text-white"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                      <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                         Quote Validity
                       </label>
                       <input
                         type="text"
                         value={quoteValidity}
                         onChange={(e) => setQuoteValidity(e.target.value)}
-                        className="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full text-xs px-2.5 py-1.5 bg-slate-50 dark:bg-dark-850 border border-slate-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 text-slate-800 dark:text-white"
                       />
                     </div>
                   </div>
@@ -588,112 +752,116 @@ export const AuctionDetailPage: React.FC = () => {
                   <button
                     type="submit"
                     disabled={bidSubmitting}
-                    className="w-full mt-2 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="w-full mt-2 py-3 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-black text-xs shadow-glow-cyan transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                   >
-                    {bidSubmitting ? 'Transmitting Bid...' : 'Place Official Quotation'}
+                    {bidSubmitting ? 'Transmitting Bid to Engine...' : 'Place Official Quotation'}
                     <Send className="w-3.5 h-3.5" />
                   </button>
                 </form>
               )}
             </div>
           ) : (
-            <div className="bg-indigo-50/70 rounded-xl border border-indigo-200 p-5 text-indigo-900 text-xs space-y-2">
-              <h3 className="font-bold text-sm text-indigo-950 flex items-center gap-1.5">
-                <Info className="w-4 h-4 text-indigo-600" />
-                Buyer Monitoring Mode
+            <div className="rounded-2xl glass-panel dark:bg-dark-900/80 border border-slate-200/80 dark:border-white/10 p-5 text-xs space-y-2.5">
+              <h3 className="font-black text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                <Info className="w-4 h-4 text-cyan-400" />
+                Buyer Monitoring Console
               </h3>
-              <p className="leading-relaxed text-indigo-800">
-                You are logged in as a <strong>Buyer</strong>. You have complete visibility over supplier bids, 
-                rankings, extension events, and audit logs.
+              <p className="leading-relaxed text-slate-600 dark:text-slate-300">
+                You are logged in as a <strong>Buyer</strong>. You have full oversight of competitive carrier bids, leaderboard ranking shifts, and auction extensions.
               </p>
-              <p className="text-[11px] text-indigo-700">
-                To test submitting bids and triggering extensions, use the <strong>Quick Demo Bar</strong> at the top to switch to any of the 3 supplier accounts.
+              <p className="text-[11px] text-cyan-600 dark:text-cyan-400 font-medium">
+                Tip: Use the top <strong>Quick Demo Bar</strong> to switch to any supplier to submit lower quotes and trigger extensions!
               </p>
             </div>
           )}
 
-          {/* Extension Rules Inspector Card */}
-          <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-3">
-            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2">
-              Auction Extension Parameters
+          {/* Extension Rules Card */}
+          <div className="rounded-2xl glass-panel dark:bg-dark-900/80 border border-slate-200/80 dark:border-white/10 p-5 shadow-glass space-y-3">
+            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider border-b border-slate-200/60 dark:border-white/10 pb-2">
+              Extension Engine Parameters
             </h3>
-            <div className="space-y-2 text-xs">
+            <div className="space-y-2.5 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-slate-500">British Auction:</span>
-                <strong className="text-emerald-700">
+                <span className="text-slate-500 dark:text-slate-400">British Auction:</span>
+                <strong className="text-emerald-500 dark:text-emerald-400 font-bold">
                   {rfq.auction_config?.british_auction_enabled ? 'Active / Enabled' : 'Disabled'}
                 </strong>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-500">Trigger Window (X):</span>
-                <strong className="font-mono text-slate-800">
+                <span className="text-slate-500 dark:text-slate-400">Trigger Window (X):</span>
+                <strong className="font-mono text-slate-800 dark:text-slate-200">
                   Last {rfq.auction_config?.trigger_window_minutes} Minutes
                 </strong>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-500">Extension Duration (Y):</span>
-                <strong className="font-mono text-slate-800">
+                <span className="text-slate-500 dark:text-slate-400">Extension Duration (Y):</span>
+                <strong className="font-mono text-cyan-500 dark:text-cyan-400">
                   +{rfq.auction_config?.extension_duration_minutes} Minutes
                 </strong>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-500">Trigger Type:</span>
-                <strong className="text-indigo-700 text-right max-w-[140px] truncate">
+                <span className="text-slate-500 dark:text-slate-400">Trigger Type:</span>
+                <strong className="text-violet-500 dark:text-violet-400 text-right max-w-[140px] truncate">
                   {rfq.auction_config?.extension_trigger_type.replace(/_/g, ' ')}
                 </strong>
               </div>
-              <div className="flex items-center justify-between pt-1 border-t border-slate-100">
-                <span className="text-slate-500">Forced Close Limit:</span>
-                <strong className="font-mono text-rose-700 text-right">
+              <div className="flex items-center justify-between pt-1.5 border-t border-slate-200/60 dark:border-white/10">
+                <span className="text-slate-500 dark:text-slate-400">Forced Close Ceiling:</span>
+                <strong className="font-mono text-rose-500 dark:text-rose-400 text-right">
                   {new Date(rfq.forced_close_time).toLocaleTimeString()}
                 </strong>
               </div>
             </div>
           </div>
 
-          {/* Chronological Auction Activity Logs */}
-          <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                <History className="w-3.5 h-3.5 text-indigo-600" />
-                Live Auction Activity Stream
+          {/* Animated Chronological Activity Timeline */}
+          <div className="rounded-2xl glass-panel dark:bg-dark-900/80 border border-slate-200/80 dark:border-white/10 p-5 shadow-glass space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-white/10 pb-2">
+              <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                <History className="w-4 h-4 text-cyan-400" />
+                Live Activity Timeline
               </h3>
               <span className="text-[10px] text-slate-400 font-mono">
                 {activityLogs.length} Events
               </span>
             </div>
 
-            <div className="space-y-2.5 max-h-[350px] overflow-y-auto pr-1">
+            <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
               {activityLogs.map((log) => (
                 <div
                   key={log.id}
-                  className={`p-2.5 rounded-lg border text-xs space-y-1 transition-all ${
+                  className={`p-3 rounded-xl border text-xs space-y-1 transition-all ${
                     log.event_type === 'AUCTION_EXTENDED'
-                      ? 'bg-amber-50 border-amber-200 text-amber-950 shadow-sm'
+                      ? 'bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200 shadow-glow-amber'
                       : log.event_type === 'AUCTION_FORCE_CLOSED'
-                      ? 'bg-rose-50 border-rose-200 text-rose-950'
+                      ? 'bg-rose-500/10 border-rose-500/30 text-rose-900 dark:text-rose-200'
                       : log.event_type === 'RANKING_CHANGED'
-                      ? 'bg-indigo-50/50 border-indigo-100 text-indigo-950'
-                      : 'bg-slate-50 border-slate-100 text-slate-800'
+                      ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-900 dark:text-cyan-200'
+                      : 'bg-slate-100/50 dark:bg-dark-850/50 border-slate-200/50 dark:border-white/5 text-slate-800 dark:text-slate-300'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-1">
-                    <span className="font-bold text-[11px] flex items-center gap-1">
-                      {log.event_type === 'AUCTION_EXTENDED' && <Sparkles className="w-3 h-3 text-amber-600 animate-spin" />}
+                    <span className="font-bold text-[11px] flex items-center gap-1.5">
+                      {log.event_type === 'AUCTION_EXTENDED' && (
+                        <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-spin" />
+                      )}
                       {log.event_type.replace(/_/g, ' ')}
                     </span>
                     <span className="text-[10px] text-slate-400 font-mono">
                       {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                     </span>
                   </div>
-                  <p className="text-[11px] leading-relaxed text-slate-700">
+                  <p className="text-[11px] leading-relaxed opacity-90">
                     {log.event_description}
                   </p>
-                  {log.previous_close_time && log.updated_close_time && log.previous_close_time !== log.updated_close_time && (
-                    <div className="text-[10px] font-mono text-indigo-700 pt-0.5">
-                      Deadline shifted: {new Date(log.previous_close_time).toLocaleTimeString()} &rarr; {new Date(log.updated_close_time).toLocaleTimeString()}
-                    </div>
-                  )}
+                  {log.previous_close_time &&
+                    log.updated_close_time &&
+                    log.previous_close_time !== log.updated_close_time && (
+                      <div className="text-[10px] font-mono text-cyan-500 dark:text-cyan-400 pt-0.5">
+                        Shift: {new Date(log.previous_close_time).toLocaleTimeString()} &rarr;{' '}
+                        {new Date(log.updated_close_time).toLocaleTimeString()}
+                      </div>
+                    )}
                 </div>
               ))}
             </div>

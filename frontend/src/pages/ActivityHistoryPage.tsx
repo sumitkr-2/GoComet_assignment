@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { dashboardAPI } from '../services/api';
 import { ActivityLog } from '../types';
-import { History, Sparkles, Filter, Search, ArrowRight, Gavel } from 'lucide-react';
+import { History, Sparkles, Gavel, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
 export const ActivityHistoryPage: React.FC = () => {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
@@ -22,7 +23,7 @@ export const ActivityHistoryPage: React.FC = () => {
 
   useEffect(() => {
     fetchLogs();
-    const interval = setInterval(fetchLogs, 3000);
+    const interval = setInterval(fetchLogs, 2500);
     return () => clearInterval(interval);
   }, []);
 
@@ -34,27 +35,27 @@ export const ActivityHistoryPage: React.FC = () => {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative z-10">
       <div>
-        <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-          <History className="w-5 h-5 text-indigo-600" />
-          Procurement Audit & Activity Log
+        <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
+          <History className="w-6 h-6 text-cyan-400" />
+          Procurement Audit & Live Timeline
         </h1>
-        <p className="text-xs text-slate-500 mt-1">
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
           Chronological audit trail of all bid submissions, leaderboard ranking shifts, extensions, and auction closures
         </p>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between gap-4">
+      <div className="rounded-2xl glass-panel dark:bg-dark-900/70 border border-slate-200/80 dark:border-white/10 p-4 shadow-glass flex items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           {['ALL', 'EXTENSIONS', 'BIDS', 'RANKINGS'].map((f) => (
             <button
               key={f}
               onClick={() => setFilterType(f)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 ${
                 filterType === f
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                  ? 'bg-gradient-to-r from-cyan-500 to-indigo-600 text-white shadow-glow-cyan'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               {f === 'ALL' ? 'All Events' : f}
@@ -63,32 +64,34 @@ export const ActivityHistoryPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="rounded-2xl glass-panel dark:bg-dark-900/70 border border-slate-200/80 dark:border-white/10 shadow-glass overflow-hidden">
         {loading && logs.length === 0 ? (
-          <div className="p-8 text-center text-xs text-slate-400">Loading audit history...</div>
+          <div className="p-12 text-center text-xs text-slate-400">Loading audit history...</div>
         ) : filteredLogs.length === 0 ? (
-          <div className="p-8 text-center text-xs text-slate-400">No activity logs recorded.</div>
+          <div className="p-12 text-center text-xs text-slate-400">No activity logs recorded.</div>
         ) : (
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-slate-100 dark:divide-white/5">
             {filteredLogs.map((log) => (
-              <div
+              <motion.div
                 key={log.id}
-                className="p-4 hover:bg-slate-50/80 transition-colors flex items-start justify-between gap-4"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-4 hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors flex items-start justify-between gap-4"
               >
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-3.5">
                   <div
-                    className={`p-2 rounded-lg mt-0.5 shrink-0 ${
+                    className={`p-2.5 rounded-xl mt-0.5 shrink-0 ${
                       log.event_type === 'AUCTION_EXTENDED'
-                        ? 'bg-amber-100 text-amber-800'
+                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 shadow-glow-amber'
                         : log.event_type === 'RANKING_CHANGED'
-                        ? 'bg-indigo-100 text-indigo-800'
+                        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-glow-cyan'
                         : log.event_type === 'AUCTION_FORCE_CLOSED'
-                        ? 'bg-rose-100 text-rose-800'
-                        : 'bg-emerald-100 text-emerald-800'
+                        ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                        : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                     }`}
                   >
                     {log.event_type === 'AUCTION_EXTENDED' ? (
-                      <Sparkles className="w-4 h-4" />
+                      <Sparkles className="w-4 h-4 animate-spin" />
                     ) : (
                       <Gavel className="w-4 h-4" />
                     )}
@@ -96,20 +99,20 @@ export const ActivityHistoryPage: React.FC = () => {
 
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-xs text-slate-900">
+                      <span className="font-bold text-xs text-slate-900 dark:text-white">
                         {log.event_type.replace(/_/g, ' ')}
                       </span>
                       {log.supplier_company_name && (
-                        <span className="text-[11px] font-semibold text-slate-600">
+                        <span className="text-[11px] font-semibold text-cyan-600 dark:text-cyan-400">
                           • {log.supplier_company_name}
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-slate-700 leading-relaxed max-w-3xl">
+                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">
                       {log.event_description}
                     </p>
                     {log.previous_close_time && log.updated_close_time && (
-                      <div className="text-[11px] font-mono text-indigo-600">
+                      <div className="text-[11px] font-mono text-cyan-500 dark:text-cyan-400 font-bold">
                         Deadline Extension: {new Date(log.previous_close_time).toLocaleTimeString()} &rarr;{' '}
                         {new Date(log.updated_close_time).toLocaleTimeString()}
                       </div>
@@ -123,12 +126,12 @@ export const ActivityHistoryPage: React.FC = () => {
                   </span>
                   <Link
                     to={`/rfqs/${log.rfq_id}`}
-                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 mt-1"
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-cyan-500 hover:text-cyan-400 mt-1"
                   >
                     View RFQ #{log.rfq_id} <ArrowRight className="w-3 h-3" />
                   </Link>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         )}

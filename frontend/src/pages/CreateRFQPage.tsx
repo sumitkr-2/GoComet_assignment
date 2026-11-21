@@ -8,18 +8,16 @@ import {
   Clock,
   ShieldAlert,
   ArrowRight,
-  Info,
   Sparkles,
-  CheckCircle2,
-  AlertCircle
+  AlertCircle,
 } from 'lucide-react';
+import { TiltCard3D } from '../components/TiltCard3D';
 
 export const CreateRFQPage: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Default initial values
   const now = new Date();
   const formatDatetimeLocal = (d: Date) => {
     const pad = (n: number) => String(n).padStart(2, '0');
@@ -27,9 +25,9 @@ export const CreateRFQPage: React.FC = () => {
   };
 
   const startTimeDefault = formatDatetimeLocal(now);
-  const closeTimeDefault = formatDatetimeLocal(new Date(now.getTime() + 60 * 60 * 1000)); // +1h
-  const forcedCloseDefault = formatDatetimeLocal(new Date(now.getTime() + 120 * 60 * 1000)); // +2h
-  const pickupDefault = formatDatetimeLocal(new Date(now.getTime() + 72 * 60 * 1000 * 60)); // +3 days
+  const closeTimeDefault = formatDatetimeLocal(new Date(now.getTime() + 60 * 60 * 1000));
+  const forcedCloseDefault = formatDatetimeLocal(new Date(now.getTime() + 120 * 60 * 1000));
+  const pickupDefault = formatDatetimeLocal(new Date(now.getTime() + 72 * 60 * 1000 * 60));
 
   const [formData, setFormData] = useState({
     name: '',
@@ -56,15 +54,14 @@ export const CreateRFQPage: React.FC = () => {
     }
   };
 
-  // Quick preset helper for fast interview demonstration
   const handleFastDemoPreset = () => {
     const current = new Date();
     setFormData({
-      name: 'Pharma Cold-Chain Express (Fast Demo Test)',
+      name: 'Pharma Cold-Chain Express (Live Demo Test)',
       reference_id: `RFQ-FAST-${Math.floor(100 + Math.random() * 900)}`,
-      bid_start_time: formatDatetimeLocal(new Date(current.getTime() - 5 * 60 * 1000)), // Started 5m ago
-      bid_close_time: formatDatetimeLocal(new Date(current.getTime() + 90 * 1000)), // Closes in 90s
-      forced_close_time: formatDatetimeLocal(new Date(current.getTime() + 6 * 60 * 1000)), // Hard limit 6m
+      bid_start_time: formatDatetimeLocal(new Date(current.getTime() - 5 * 60 * 1000)),
+      bid_close_time: formatDatetimeLocal(new Date(current.getTime() + 90 * 1000)),
+      forced_close_time: formatDatetimeLocal(new Date(current.getTime() + 6 * 60 * 1000)),
       pickup_service_date: formatDatetimeLocal(new Date(current.getTime() + 24 * 60 * 60 * 1000)),
       british_auction_enabled: true,
       trigger_window_minutes: 2,
@@ -77,7 +74,6 @@ export const CreateRFQPage: React.FC = () => {
     e.preventDefault();
     setError(null);
 
-    // Client-side validation
     const start = new Date(formData.bid_start_time).getTime();
     const close = new Date(formData.bid_close_time).getTime();
     const forced = new Date(formData.forced_close_time).getTime();
@@ -117,14 +113,14 @@ export const CreateRFQPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6 relative z-10">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <Gavel className="w-5 h-5 text-indigo-600" />
-            Create Request For Quotation (RFQ)
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
+            <Gavel className="w-6 h-6 text-cyan-400" />
+            Create British Auction RFQ
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Configure British Auction parameters, trigger windows, extension rules, and forced close caps
           </p>
         </div>
@@ -132,30 +128,30 @@ export const CreateRFQPage: React.FC = () => {
         <button
           type="button"
           onClick={handleFastDemoPreset}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-300 text-amber-800 text-xs font-bold hover:bg-amber-100 transition-colors shadow-sm self-start sm:self-auto"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-500 dark:text-amber-300 text-xs font-bold hover:bg-amber-500/25 transition-all shadow-glow-amber self-start sm:self-auto"
         >
-          <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+          <Sparkles className="w-4 h-4 text-amber-400 animate-spin" />
           Load Fast-Demo Preset (90s window)
         </button>
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-medium flex items-center gap-2.5">
+          <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
           <span>{error}</span>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Basic RFQ Information */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
-          <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2">
+        {/* General Details */}
+        <div className="rounded-2xl glass-panel dark:bg-dark-900/70 border border-slate-200/80 dark:border-white/10 p-6 shadow-glass space-y-4">
+          <h2 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest border-b border-slate-200/60 dark:border-white/10 pb-2.5">
             1. General RFQ Details
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                 RFQ Title / Service Name *
               </label>
               <input
@@ -165,12 +161,12 @@ export const CreateRFQPage: React.FC = () => {
                 value={formData.name}
                 onChange={handleChange}
                 placeholder="e.g. Heavy Steel Coils - Jamshedpur to Mumbai"
-                className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full text-xs px-3.5 py-2.5 bg-slate-50 dark:bg-dark-850 border border-slate-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                 Reference ID *
               </label>
               <input
@@ -180,13 +176,13 @@ export const CreateRFQPage: React.FC = () => {
                 value={formData.reference_id}
                 onChange={handleChange}
                 placeholder="e.g. RFQ-2026-009"
-                className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full text-xs px-3.5 py-2.5 bg-slate-50 dark:bg-dark-850 border border-slate-200 dark:border-white/10 rounded-xl font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500 text-slate-900 dark:text-white"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
               Required Pickup / Service Date *
             </label>
             <input
@@ -195,27 +191,27 @@ export const CreateRFQPage: React.FC = () => {
               required
               value={formData.pickup_service_date}
               onChange={handleChange}
-              className="w-full sm:w-1/2 text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+              className="w-full sm:w-1/2 text-xs px-3.5 py-2.5 bg-slate-50 dark:bg-dark-850 border border-slate-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 font-mono text-slate-900 dark:text-white"
             />
           </div>
         </div>
 
-        {/* Auction Time Boundaries */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4">
-          <div className="border-b border-slate-100 pb-2 flex items-center justify-between">
-            <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+        {/* Timeline */}
+        <div className="rounded-2xl glass-panel dark:bg-dark-900/70 border border-slate-200/80 dark:border-white/10 p-6 shadow-glass space-y-4">
+          <div className="border-b border-slate-200/60 dark:border-white/10 pb-2.5 flex items-center justify-between">
+            <h2 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest">
               2. Auction Bidding Timeline
             </h2>
-            <span className="text-[11px] text-slate-400 font-medium">
+            <span className="text-[10px] text-slate-400 font-mono">
               Start &lt; Close &lt; Forced Close
             </span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-indigo-500" />
-                Bid Start Date & Time *
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                Bid Start Time *
               </label>
               <input
                 type="datetime-local"
@@ -223,14 +219,14 @@ export const CreateRFQPage: React.FC = () => {
                 required
                 value={formData.bid_start_time}
                 onChange={handleChange}
-                className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                className="w-full text-xs px-3.5 py-2.5 bg-slate-50 dark:bg-dark-850 border border-slate-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 font-mono text-slate-900 dark:text-white"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-amber-500" />
-                Original Bid Close Time *
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-amber-400" />
+                Original Close Time *
               </label>
               <input
                 type="datetime-local"
@@ -238,14 +234,14 @@ export const CreateRFQPage: React.FC = () => {
                 required
                 value={formData.bid_close_time}
                 onChange={handleChange}
-                className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                className="w-full text-xs px-3.5 py-2.5 bg-slate-50 dark:bg-dark-850 border border-slate-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 font-mono text-slate-900 dark:text-white"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center gap-1 text-rose-700">
+              <label className="block text-xs font-bold text-rose-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
                 <ShieldAlert className="w-3.5 h-3.5 text-rose-500" />
-                Forced Bid Close Time *
+                Forced Close Time *
               </label>
               <input
                 type="datetime-local"
@@ -253,20 +249,20 @@ export const CreateRFQPage: React.FC = () => {
                 required
                 value={formData.forced_close_time}
                 onChange={handleChange}
-                className="w-full text-xs px-3 py-2 border border-rose-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 font-mono bg-rose-50/30"
+                className="w-full text-xs px-3.5 py-2.5 bg-rose-500/5 dark:bg-rose-500/10 border border-rose-500/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 font-mono text-slate-900 dark:text-white"
               />
-              <span className="text-[10px] text-rose-600 block mt-1">
-                Hard ceiling: Auction will NEVER extend past this point.
+              <span className="text-[10px] text-rose-500 block mt-1">
+                Hard ceiling: Auction will NEVER extend past this time.
               </span>
             </div>
           </div>
         </div>
 
-        {/* British Auction Automatic Extension Engine Configuration */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-5">
-          <div className="border-b border-slate-100 pb-2 flex items-center justify-between">
-            <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-indigo-600" />
+        {/* British Auction Settings */}
+        <div className="rounded-2xl glass-panel dark:bg-dark-900/70 border border-slate-200/80 dark:border-white/10 p-6 shadow-glass space-y-5">
+          <div className="border-b border-slate-200/60 dark:border-white/10 pb-2.5 flex items-center justify-between">
+            <h2 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-cyan-400" />
               3. British Auction Extension Rules
             </h2>
             <label className="relative inline-flex items-center cursor-pointer">
@@ -277,8 +273,8 @@ export const CreateRFQPage: React.FC = () => {
                 onChange={handleChange}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-              <span className="ml-2 text-xs font-bold text-slate-700">
+              <div className="w-11 h-6 bg-slate-200 dark:bg-dark-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500 shadow-sm"></div>
+              <span className="ml-2.5 text-xs font-bold text-slate-700 dark:text-slate-300">
                 {formData.british_auction_enabled ? 'ENABLED' : 'DISABLED'}
               </span>
             </label>
@@ -288,7 +284,7 @@ export const CreateRFQPage: React.FC = () => {
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                     Trigger Window (X Minutes) *
                   </label>
                   <input
@@ -299,15 +295,15 @@ export const CreateRFQPage: React.FC = () => {
                     required
                     value={formData.trigger_window_minutes}
                     onChange={handleChange}
-                    className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                    className="w-full text-xs px-3.5 py-2.5 bg-slate-50 dark:bg-dark-850 border border-slate-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 font-mono text-slate-900 dark:text-white"
                   />
-                  <p className="text-[11px] text-slate-500 mt-1">
-                    Monitors qualifying bidding activity inside the last {formData.trigger_window_minutes} minutes before close.
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                    Monitors qualifying bidding activity inside the last {formData.trigger_window_minutes} minutes.
                   </p>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                     Extension Duration (Y Minutes) *
                   </label>
                   <input
@@ -318,26 +314,25 @@ export const CreateRFQPage: React.FC = () => {
                     required
                     value={formData.extension_duration_minutes}
                     onChange={handleChange}
-                    className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                    className="w-full text-xs px-3.5 py-2.5 bg-slate-50 dark:bg-dark-850 border border-slate-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 font-mono text-slate-900 dark:text-white"
                   />
-                  <p className="text-[11px] text-slate-500 mt-1">
-                    Extends the closing time by +{formData.extension_duration_minutes} minutes when trigger occurs.
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                    Extends the closing time by +{formData.extension_duration_minutes} minutes upon trigger.
                   </p>
                 </div>
               </div>
 
-              {/* Extension Trigger Types */}
+              {/* Trigger Type Radio Selector */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2.5">
                   Select Extension Trigger Type *
                 </label>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {/* Type A */}
                   <label
-                    className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
+                    className={`p-4 rounded-xl border cursor-pointer transition-all duration-200 ${
                       formData.extension_trigger_type === 'BID_RECEIVED'
-                        ? 'border-indigo-600 bg-indigo-50/70 shadow-sm ring-1 ring-indigo-600'
-                        : 'border-slate-200 hover:bg-slate-50'
+                        ? 'border-cyan-500/60 bg-cyan-500/10 shadow-glow-cyan'
+                        : 'border-slate-200 dark:border-white/10 hover:bg-slate-100/50 dark:hover:bg-white/5'
                     }`}
                   >
                     <div className="flex items-center gap-2">
@@ -347,23 +342,22 @@ export const CreateRFQPage: React.FC = () => {
                         value="BID_RECEIVED"
                         checked={formData.extension_trigger_type === 'BID_RECEIVED'}
                         onChange={handleChange}
-                        className="text-indigo-600 focus:ring-indigo-500"
+                        className="text-cyan-500 focus:ring-cyan-500"
                       />
-                      <span className="font-bold text-xs text-slate-800">
+                      <span className="font-bold text-xs text-slate-900 dark:text-white">
                         Type A: Bid Received
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-600 mt-1.5 leading-relaxed">
-                      Extends whenever <strong>any valid quotation</strong> is placed within the last X minutes.
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-2 leading-relaxed">
+                      Extends whenever <strong>any valid quote</strong> is submitted during the trigger window.
                     </p>
                   </label>
 
-                  {/* Type B */}
                   <label
-                    className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
+                    className={`p-4 rounded-xl border cursor-pointer transition-all duration-200 ${
                       formData.extension_trigger_type === 'ANY_RANK_CHANGE'
-                        ? 'border-indigo-600 bg-indigo-50/70 shadow-sm ring-1 ring-indigo-600'
-                        : 'border-slate-200 hover:bg-slate-50'
+                        ? 'border-cyan-500/60 bg-cyan-500/10 shadow-glow-cyan'
+                        : 'border-slate-200 dark:border-white/10 hover:bg-slate-100/50 dark:hover:bg-white/5'
                     }`}
                   >
                     <div className="flex items-center gap-2">
@@ -373,23 +367,22 @@ export const CreateRFQPage: React.FC = () => {
                         value="ANY_RANK_CHANGE"
                         checked={formData.extension_trigger_type === 'ANY_RANK_CHANGE'}
                         onChange={handleChange}
-                        className="text-indigo-600 focus:ring-indigo-500"
+                        className="text-cyan-500 focus:ring-cyan-500"
                       />
-                      <span className="font-bold text-xs text-slate-800">
+                      <span className="font-bold text-xs text-slate-900 dark:text-white">
                         Type B: Any Rank Change
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-600 mt-1.5 leading-relaxed">
-                      Extends only when <strong>any supplier ranking position changes</strong> in the last X minutes.
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-2 leading-relaxed">
+                      Extends only when <strong>any supplier ranking position changes</strong> in the trigger window.
                     </p>
                   </label>
 
-                  {/* Type C */}
                   <label
-                    className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
+                    className={`p-4 rounded-xl border cursor-pointer transition-all duration-200 ${
                       formData.extension_trigger_type === 'L1_RANK_CHANGE'
-                        ? 'border-indigo-600 bg-indigo-50/70 shadow-sm ring-1 ring-indigo-600'
-                        : 'border-slate-200 hover:bg-slate-50'
+                        ? 'border-cyan-500/60 bg-cyan-500/10 shadow-glow-cyan'
+                        : 'border-slate-200 dark:border-white/10 hover:bg-slate-100/50 dark:hover:bg-white/5'
                     }`}
                   >
                     <div className="flex items-center gap-2">
@@ -399,14 +392,14 @@ export const CreateRFQPage: React.FC = () => {
                         value="L1_RANK_CHANGE"
                         checked={formData.extension_trigger_type === 'L1_RANK_CHANGE'}
                         onChange={handleChange}
-                        className="text-indigo-600 focus:ring-indigo-500"
+                        className="text-cyan-500 focus:ring-cyan-500"
                       />
-                      <span className="font-bold text-xs text-slate-800">
-                        Type C: Lowest Bidder (L1) Change
+                      <span className="font-bold text-xs text-slate-900 dark:text-white">
+                        Type C: L1 Lowest Bidder Change
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-600 mt-1.5 leading-relaxed">
-                      Extends only when a <strong>new lowest supplier (L1)</strong> emerges. Self-lowering by L1 does not extend.
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-2 leading-relaxed">
+                      Extends only when a <strong>new lowest supplier (L1)</strong> emerges. L1 self-lowering does not extend.
                     </p>
                   </label>
                 </div>
@@ -415,19 +408,19 @@ export const CreateRFQPage: React.FC = () => {
           )}
         </div>
 
-        {/* Submit Actions */}
+        {/* Buttons */}
         <div className="flex items-center justify-end gap-3 pt-2">
           <button
             type="button"
             onClick={() => navigate('/auctions')}
-            className="px-4 py-2.5 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+            className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
+            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 via-indigo-600 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white text-xs font-black shadow-glow-cyan transition-all flex items-center gap-2 disabled:opacity-50"
           >
             {loading ? 'Publishing RFQ...' : 'Publish British Auction RFQ'}
             <ArrowRight className="w-4 h-4" />
