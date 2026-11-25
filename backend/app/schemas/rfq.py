@@ -1,7 +1,14 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from pydantic import BaseModel, Field, model_validator
 from app.models.rfq import RFQStatus, ExtensionTriggerType
+
+def to_utc_naive(dt: Optional[datetime]) -> Optional[datetime]:
+    if dt is None:
+        return None
+    if dt.tzinfo is not None:
+        return dt.astimezone(timezone.utc).replace(tzinfo=None)
+    return dt
 
 class AuctionConfigBase(BaseModel):
     british_auction_enabled: bool = True
@@ -31,6 +38,11 @@ class RFQCreate(BaseModel):
 
     @model_validator(mode="after")
     def validate_times(self):
+        self.bid_start_time = to_utc_naive(self.bid_start_time)
+        self.bid_close_time = to_utc_naive(self.bid_close_time)
+        self.forced_close_time = to_utc_naive(self.forced_close_time)
+        self.pickup_service_date = to_utc_naive(self.pickup_service_date)
+
         if self.bid_start_time >= self.bid_close_time:
             raise ValueError("Bid Start Time must be strictly earlier than Bid Close Time.")
         if self.bid_close_time >= self.forced_close_time:

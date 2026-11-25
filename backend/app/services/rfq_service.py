@@ -1,11 +1,11 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from app.models.rfq import RFQ, AuctionConfiguration, RFQStatus
 from app.models.quotation import Quotation
 from app.models.activity import AuctionActivityLog
-from app.schemas.rfq import RFQCreate, RFQListOut, AuctionConfigOut
+from app.schemas.rfq import RFQCreate, RFQListOut, AuctionConfigOut, to_utc_naive
 from app.services.ranking_service import RankingService
 
 class RFQService:
@@ -18,7 +18,10 @@ class RFQService:
         - If now >= current_close_time -> CLOSED
         - If bid_start_time <= now < current_close_time -> ACTIVE
         """
-        now = current_time or datetime.utcnow()
+        now = to_utc_naive(current_time or datetime.utcnow())
+        rfq.bid_start_time = to_utc_naive(rfq.bid_start_time)
+        rfq.current_close_time = to_utc_naive(rfq.current_close_time)
+        rfq.forced_close_time = to_utc_naive(rfq.forced_close_time)
         old_status = rfq.status
 
         if now >= rfq.forced_close_time:

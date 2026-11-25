@@ -7,6 +7,7 @@ from app.models.quotation import Quotation
 from app.models.user import Supplier
 from app.models.activity import AuctionActivityLog
 from app.schemas.quotation import QuotationCreate, QuotationOut, QuotationSubmitResponse
+from app.schemas.rfq import to_utc_naive
 from app.services.ranking_service import RankingService
 from app.services.rfq_service import RFQService
 
@@ -31,7 +32,7 @@ class BritishAuctionEngine:
         7. Enforces forced close capping.
         8. Generates all audit logs.
         """
-        now = submission_time or datetime.utcnow()
+        now = to_utc_naive(submission_time or datetime.utcnow())
 
         # 1. Fetch RFQ & Sync status
         rfq = db.query(RFQ).filter(RFQ.id == rfq_id).with_for_update().first() if db.bind.dialect.name != "sqlite" else db.query(RFQ).filter(RFQ.id == rfq_id).first()
@@ -40,6 +41,11 @@ class BritishAuctionEngine:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"RFQ with ID {rfq_id} does not exist."
             )
+
+        rfq.bid_start_time = to_utc_naive(rfq.bid_start_time)
+        rfq.current_close_time = to_utc_naive(rfq.current_close_time)
+        rfq.forced_close_time = to_utc_naive(rfq.forced_close_time)
+        rfq.original_close_time = to_utc_naive(rfq.original_close_time)
 
         RFQService.sync_rfq_status(db, rfq, current_time=now)
 
